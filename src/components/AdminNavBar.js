@@ -31,6 +31,12 @@ const AdminNavBar = () => {
         >
           Register
         </NavLink>
+        <NavLink
+          to="/admin/profile"
+          style={({ isActive }) => (isActive ? { ...styles.link, ...activeStyle } : styles.link)}
+        >
+          Profile
+        </NavLink>
       </div>
       <button onClick={handleLogout} style={styles.logoutButton} aria-label="Logout">
         Logout
@@ -41,7 +47,7 @@ const AdminNavBar = () => {
 
 const styles = {
   nav: {
-    width:'100%',
+    width: '100%',
     boxSizing: 'border-box',
     display: 'flex',
     justifyContent: 'space-between',
@@ -50,7 +56,6 @@ const styles = {
     padding: '1rem 2rem',
     backgroundColor: '#2d6cdf',
     color: '#fff',
-    
   },
   leftLinks: {
     display: 'flex',

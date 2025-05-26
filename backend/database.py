@@ -1,25 +1,32 @@
-import mysql.connector
-from mysql.connector import pooling
-
-db_config = {
-    "host": "localhost",
-    "user": "your_user",
-    "password": "your_password",
-    "database": "your_db"
-}
-
-pool = pooling.MySQLConnectionPool(pool_name="mypool", pool_size=5, **db_config)
+import pymysql
 
 def get_db():
-    conn = pool.get_connection()
+    conn = pymysql.connect(
+        host="localhost",
+        user="root",
+        password="nfesucks",
+        database="club",
+        cursorclass=pymysql.cursors.DictCursor
+    )
     try:
         yield conn
     finally:
         conn.close()
 
+
 def create_tables():
-    conn = pool.get_connection()
+    conn = pymysql.connect(
+        host="localhost",
+        user="root",
+        password="nfesucks",
+        database="club",
+        cursorclass=pymysql.cursors.DictCursor
+    )
     cursor = conn.cursor()
+
+    # Optional: clean corrupted users
+    cursor.execute("DROP TABLE IF EXISTS users")
+
     cursor.execute("""CREATE TABLE IF NOT EXISTS users (
         memberId VARCHAR(10) PRIMARY KEY,
         tier VARCHAR(20),
@@ -27,6 +34,7 @@ def create_tables():
         password VARCHAR(100),
         isAdmin BOOLEAN
     )""")
+
     cursor.execute("""CREATE TABLE IF NOT EXISTS events (
         id VARCHAR(10) PRIMARY KEY,
         title VARCHAR(100),
@@ -37,6 +45,7 @@ def create_tables():
         description TEXT,
         imageUrl TEXT
     )""")
+
     conn.commit()
     cursor.close()
     conn.close()

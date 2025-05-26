@@ -14,7 +14,6 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr]
     password: Optional[str]
     isAdmin: Optional[bool]
-
 class LoginSchema(BaseModel):
     email: EmailStr
     password: str

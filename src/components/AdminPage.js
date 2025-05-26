@@ -1,177 +1,150 @@
-import React, { useContext, useState, useEffect } from 'react';
+/* Final AdminPage.js */
+import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../App';
-import { useNavigate, Navigate } from 'react-router-dom';
 import AdminNavBar from './AdminNavBar';
-
-function EditableInput({ label, value, onChange, type = 'text', disabled = false, ...props }) {
-  return (
-    
-    <label style={{ display: 'block', marginBottom: 8 }}>
-      <strong>{label}:</strong>
-      <input
-        type={type}
-        value={value}
-        disabled={disabled}
-        onChange={e => onChange(e.target.value)}
-        style={{
-          marginLeft: 8,
-          padding: 4,
-          borderRadius: 4,
-          border: disabled ? 'none' : '1px solid #bbb',
-          backgroundColor: disabled ? '#f9f9f9' : 'white',
-          minWidth: 120,
-          maxWidth: '100%',
-          cursor: disabled ? 'default' : 'text',
-        }}
-        {...props}
-      />
-    </label>
-  );
-}
+import './styles/AdminPage.css';
+import { useNavigate } from 'react-router-dom';
 
 function AdminPage() {
-  const { user, users, updateUser, events, updateEvent } = useContext(AuthContext);
+  const {
+    user,
+    users,
+    events,
+    updateUser,
+    updateEvent,
+    fetchUsers,
+    fetchEvents,
+  } = useContext(AuthContext);
+
   const navigate = useNavigate();
-
-  const [isEditing, setIsEditing] = useState(false);
-  const [editableEvents, setEditableEvents] = useState(events);
-  const [editableUsers, setEditableUsers] = useState(users);
-  const [saveStatus, setSaveStatus] = useState('');
+  const [localUsers, setLocalUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [localEvents, setLocalEvents] = useState([]);
 
   useEffect(() => {
-    setEditableEvents(events);
-  }, [events]);
+    fetchUsers();
+    fetchEvents();
+  }, []);
 
   useEffect(() => {
-    setEditableUsers(users);
-  }, [users]);
+    setLocalUsers(users.filter((u) => u.memberId !== user?.memberId));
+    setLocalEvents(events);
+  }, [users, events, user]);
 
-  if (!user || !user.isAdmin) {
-    return <Navigate to="/" replace />;
-  }
+  const handleUserChange = (field, value) => {
+    setSelectedUser({ ...selectedUser, [field]: value });
+  };
 
-  function handleEventChange(eventId, field, value) {
-    setEditableEvents(evts =>
-      evts.map(ev => (ev.id === eventId ? { ...ev, [field]: value } : ev))
-    );
-  }
+  const handleEventChange = (index, field, value) => {
+    const updated = [...localEvents];
+    updated[index] = { ...updated[index], [field]: value };
+    setLocalEvents(updated);
+  };
 
-  function handleUserChange(memberId, field, value) {
-    setEditableUsers(usr =>
-      usr.map(u => (u.memberId === memberId ? { ...u, [field]: value } : u))
-    );
-  }
+  const saveUser = async () => {
+    await updateUser(selectedUser);
+    alert(`User ${selectedUser.memberId} updated`);
+    setSelectedUser(null);
+    fetchUsers();
+    navigate('/admin');
+  };
 
-  function handleSaveAll() {
-    for (const ev of editableEvents) {
-      if (isNaN(ev.maxSeats) || ev.maxSeats < 0) {
-        alert(`Event "${ev.title}": Max seats must be a non-negative number`);
-        return;
-      }
-      if (
-        isNaN(ev.seatsBooked) ||
-        ev.seatsBooked < 0 ||
-        ev.seatsBooked > ev.maxSeats
-      ) {
-        alert(`Event "${ev.title}": Seats booked must be between 0 and max seats`);
-        return;
-      }
-    }
+  const saveEvent = async (event) => {
+    await updateEvent(event);
+    alert(`Event ${event.id} updated`);
+    fetchEvents();
+  };
 
-    for (const usr of editableUsers) {
-      if (!usr.email.includes('@')) {
-        alert(`User  "${usr.email}": Please enter a valid email`);
-        return;
-      }
-      if (typeof usr.password !== 'string' || usr.password.length < 4) {
-        alert(`User  "${usr.email}": Password should be at least 4 characters long`);
-        return;
-      }
-    }
-
-    editableEvents.forEach(ev => {
-      updateEvent({
-        ...ev,
-        maxSeats: Number(ev.maxSeats),
-        seatsBooked: Number(ev.seatsBooked),
-      });
-    });
-
-    editableUsers.forEach(usr => {
-      const fixedIsAdmin =
-        typeof usr.isAdmin === 'string'
-          ? usr.isAdmin.toLowerCase() === 'true'
-          : usr.isAdmin;
-      updateUser({ ...usr, isAdmin: fixedIsAdmin });
-    });
-
-    setSaveStatus('Saved!');
-    setTimeout(() => setSaveStatus(''), 3000); // Clear the message after 3 seconds
-  }
+  const tiers = ['Platinum', 'Gold', 'Silver', 'Bronze'];
 
   return (
-    
-    <div >
-      <AdminNavBar />
-      <h1>Admin Dashboard</h1>
-      
-      <div style={{ display: 'flex', gap: '20px',marginBottom: '2rem',marginLeft: '2rem',marginRight: '2rem'}}>
-        <div style={{ flex: 1, border: '1px solid #ccc', padding: '10px', boxSizing: 'border-box', backgroundColor: '#3356ff', color: 'white', borderRadius: '10px' }}>
-          <h2 style={{ color: 'white' }}>Events</h2>
-          {editableEvents.map(event => (
-            <div key={event.id} style={{ border: '1px solid #ddd', padding: '10px', marginBottom: '10px', backgroundColor: 'white', color: 'black', borderRadius: '10px' }}>
-              <EditableInput
-                label="Event Title"
-                value={event.title}
-                onChange={value => handleEventChange(event.id, 'title', value)}
-                disabled={!isEditing}
-              />
-              <EditableInput
-                label="Max Seats"
-                value={event.maxSeats}
-                onChange={value => handleEventChange(event.id, 'maxSeats', value)}
-                disabled={!isEditing}
-                type="number"
-              />
-              <EditableInput
-                label="Seats Booked"
-                value={event.seatsBooked}
-                onChange={value => handleEventChange(event.id, 'seatsBooked', value)}
-                disabled={!isEditing}
-                type="number"
-              />
+    <div>
+      <AdminNavBar showProfile />
+      <div className="admin-container">
+        <div className="user-section">
+          <h2>Users</h2>
+          {tiers.map((tier) => (
+            <div key={tier} className="tier-group">
+              <h3>{tier} Tier</h3>
+              {localUsers
+                .filter((user) => user.tier === tier)
+                .map((user) => (
+                  <div
+                    key={user.memberId}
+                    className="user-email"
+                    onClick={() => setSelectedUser(user)}
+                  >
+                    {user.email}
+                  </div>
+                ))}
             </div>
           ))}
         </div>
-        <div style={{ flex: 1, border: '1px solid #ccc', padding: '10px', boxSizing: 'border-box', backgroundColor: '#3356ff', color: 'white', borderRadius: '10px' }}>
-          <h2 style={{ color: 'white' }}>Users</h2>
-          {editableUsers.map(user => (
-            <div key={user.memberId} style={{ border: '1px solid #ddd', padding: '10px', marginBottom: '10px', backgroundColor: 'white', color: 'black', borderRadius: '10px' }}>
-              <EditableInput
-                label="User Email"
-                value={user.email}
-                onChange={value => handleUserChange(user.memberId, 'email', value)}
-                disabled={!isEditing}
+
+        <div className="details-section">
+          <h2>Manage Events</h2>
+          {localEvents.map((event, idx) => (
+            <div key={event.id} className="event-card">
+              <img src={event.imageUrl} alt="event banner" />
+              <input
+                value={event.title}
+                onChange={(e) => handleEventChange(idx, 'title', e.target.value)}
+                placeholder="Title"
               />
-              <EditableInput
-                label="User Password"
-                value={user.password}
-                onChange={value => handleUserChange(user.memberId, 'password', value)}
-                disabled={!isEditing}
-                type="password"
+              <input
+                type="number"
+                value={event.maxSeats}
+                onChange={(e) => handleEventChange(idx, 'maxSeats', parseInt(e.target.value))}
+                placeholder="Max Seats"
               />
+              <input
+                type="number"
+                value={event.seatsBooked}
+                onChange={(e) => handleEventChange(idx, 'seatsBooked', parseInt(e.target.value))}
+                placeholder="Booked Seats"
+              />
+              <button onClick={() => saveEvent(event)}>Save Event</button>
             </div>
           ))}
         </div>
       </div>
-      <button style={{marginBottom: '1rem'}}  onClick={() => setIsEditing(!isEditing)}>
-        {isEditing ? 'Stop Editing' : 'Edit'}
-      </button>
-      {isEditing && (
-        <div>
-          <button onClick={handleSaveAll}>Save All Changes</button>
-          {saveStatus && <p style={{ color: 'green', marginTop: '10px' }}>{saveStatus}</p>}
-        </div>
+
+      {selectedUser && (
+        <>
+          <div className="modal-backdrop" onClick={() => setSelectedUser(null)} />
+          <div className="modal">
+            <div className="edit-user-card">
+              <h3>Edit User</h3>
+              <input
+                value={selectedUser.email}
+                onChange={(e) => handleUserChange('email', e.target.value)}
+                placeholder="Email"
+              />
+              <select
+                value={selectedUser.tier}
+                onChange={(e) => handleUserChange('tier', e.target.value)}
+              >
+                {tiers.map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label htmlFor="adminCheckbox">Admin:</label>
+                <input
+                  id="adminCheckbox"
+                  className='cb'
+                  type="checkbox"
+                  checked={selectedUser.isAdmin}
+                  onChange={(e) => handleUserChange('isAdmin', e.target.checked)}
+                />
+              </div>
+              <div className="modal-buttons">
+                <button onClick={saveUser}>Save Changes</button>
+                <button onClick={() => setSelectedUser(null)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

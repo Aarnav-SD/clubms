@@ -1,162 +1,104 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App';
+import UserNavBar from './UserNavBar';
 
 function EventDetails() {
   const { id } = useParams();
+  const { events, bookSeats } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [seats, setSeats] = useState(1);
+  const [message, setMessage] = useState('');
 
-  const { events, user, bookSeats } = useContext(AuthContext);
+  const event = events.find((ev) => ev.id === id);
 
-  const [event, setEvent] = useState(null);
-  const [seatsToBook, setSeatsToBook] = useState(1);
-  const [bookingMessage, setBookingMessage] = useState('');
-
-  useEffect(() => {
-    const ev = events.find((e) => e.id === id);
-    if (!ev) {
-      navigate('/home');
-      return;
-    }
-    setEvent(ev);
-  }, [events, id, navigate]);
-
-  if (!event) {
-    return null; // or loading indicator
-  }
-
-  const availableSeats = event.maxSeats - event.seatsBooked;
-  const maxSelectableSeats = availableSeats > 0 ? availableSeats : 0;
-
-  const handleSeatsChange = (e) => {
-    let val = Number(e.target.value);
-    if (val < 1) val = 1;
-    if (val > maxSelectableSeats) val = maxSelectableSeats;
-    setSeatsToBook(val);
-  };
-
-  const handleBook = () => {
-    if (seatsToBook <= 0) return;
-
-    if (seatsToBook > availableSeats) {
-      setBookingMessage('Not enough seats available.');
+  const handleBooking = async () => {
+    if (seats < 1 || seats > event.maxSeats - event.seatsBooked) {
+      setMessage('Invalid number of seats');
       return;
     }
 
-    bookSeats(event.id, seatsToBook);
-    setBookingMessage(`Successfully booked ${seatsToBook} ${seatsToBook === 1 ? 'seat' : 'seats'}!`);
+    try {
+      await bookSeats(event.id, seats);
+      setMessage(`Successfully booked ${seats} seat(s).`);
+      setTimeout(() => navigate('/home'), 1000);
+    } catch (err) {
+      setMessage('Booking failed');
+    }
   };
+
+  if (!event) return <p>Event not found.</p>;
 
   return (
-    <div style={styles.container} role="main" aria-label={`Event details for ${event.title}`}>
-      <button onClick={() => navigate('/home')} style={styles.backButton} aria-label="Back to home page">← Back to Events</button>
-      <h1 style={styles.title}>{event.title}</h1>
-      <img src={event.imageUrl} alt={event.title} style={styles.image} />
-      <p style={styles.description}>{event.description}</p>
-      <p><strong>Date:</strong> {event.date}</p>
-      <p><strong>Tier:</strong> {event.tier}</p>
-      <p><strong>Seats booked:</strong> {event.seatsBooked} / {event.maxSeats}</p>
-      {availableSeats > 0 ? (
-        <div style={styles.bookingSection}>
-          <label htmlFor="seats" style={styles.label}>
-            Number of seats to book:
-          </label>
+    <>
+      <UserNavBar />
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <img src={event.imageUrl} alt={event.title} style={styles.image} />
+          <h2>{event.title}</h2>
+          <p><strong>Date:</strong> {event.date}</p>
+          <p><strong>Tier:</strong> {event.tier}</p>
+          <p><strong>Description:</strong> {event.description}</p>
+          <p><strong>Seats Available:</strong> {event.maxSeats - event.seatsBooked}</p>
+
           <input
             type="number"
-            id="seats"
             min="1"
-            max={maxSelectableSeats}
-            value={seatsToBook}
-            onChange={handleSeatsChange}
+            max={event.maxSeats - event.seatsBooked}
+            value={seats}
+            onChange={(e) => setSeats(parseInt(e.target.value))}
             style={styles.input}
-            aria-describedby="seatsHelp"
           />
-          <button onClick={handleBook} style={styles.bookButton} aria-disabled={availableSeats === 0}>
+          <button onClick={handleBooking} style={styles.button}>
             Book Seats
           </button>
-          <small id="seatsHelp" style={styles.helpText}>
-            {availableSeats} seat{availableSeats !== 1 ? 's' : ''} available
-          </small>
-          {bookingMessage && <p style={styles.bookingMessage}>{bookingMessage}</p>}
+          {message && <p style={styles.message}>{message}</p>}
         </div>
-      ) : (
-        <p style={styles.soldOut}>Sorry, this event is fully booked.</p>
-      )}
-    </div>
+      </div>
+    </>
   );
 }
 
 const styles = {
   container: {
-    maxWidth: 700,
-    margin: '40px auto',
-    padding: '0 15px',
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    padding: '2rem',
+    display: 'flex',
+    justifyContent: 'center',
   },
-  backButton: {
-    background: 'none',
-    border: 'none',
-    color: '#4b6cb7',
-    cursor: 'pointer',
-    marginBottom: 20,
-    fontSize: 16,
-  },
-  title: {
-    color: '#4b6cb7',
-    marginBottom: 15,
+  card: {
+    maxWidth: 600,
+    border: '1px solid #ddd',
+    padding: 20,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+    textAlign: 'center',
   },
   image: {
     width: '100%',
     maxHeight: 300,
     objectFit: 'cover',
-    borderRadius: 10,
+    borderRadius: 8,
     marginBottom: 15,
-  },
-  description: {
-    fontSize: 16,
-    marginBottom: 15,
-    color: '#444',
-  },
-  bookingSection: {
-    marginTop: 20,
-    display: 'flex',
-    flexDirection: 'column',
-    maxWidth: 240,
-  },
-  label: {
-    fontWeight: '600',
-    marginBottom: 6,
   },
   input: {
-    padding: 8,
-    fontSize: 16,
-    borderRadius: 6,
-    border: '1.5px solid #ccc',
-    marginBottom: 10,
-    outline: 'none',
+    width: '80px',
+    padding: '8px',
+    margin: '10px 0',
   },
-  bookButton: {
-    padding: '10px 15px',
+  button: {
     backgroundColor: '#4b6cb7',
-    color: 'white',
-    fontWeight: '700',
+    color: '#fff',
     border: 'none',
-    borderRadius: 6,
+    padding: '10px 20px',
+    fontWeight: 'bold',
     cursor: 'pointer',
-    marginBottom: 10,
+    borderRadius: 5,
   },
-  bookingMessage: {
-    color: 'green',
-    fontWeight: '600',
-  },
-  soldOut: {
-    fontWeight: '700',
-    color: 'red',
-    marginTop: 20,
-  },
-  helpText: {
-    fontSize: 12,
-    color: '#555',
+  message: {
+    marginTop: 10,
+    color: '#2563eb',
+    fontWeight: 'bold',
   },
 };
 

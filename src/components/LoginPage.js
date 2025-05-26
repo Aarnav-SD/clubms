@@ -1,34 +1,24 @@
 import React, { useState, useContext } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App';
 
 function LoginPage() {
-  const { setUser, mockUsers } = useContext(AuthContext);
+  const { loginUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
   const [error, setError] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
 
-    const foundUser = mockUsers.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-
-    if (!foundUser) {
-      setError('Invalid email or password');
-      return;
-    }
-
-    setUser(foundUser);
-    if (foundUser.isAdmin) {
-      navigate('/admin', { replace: true });
+    const res = await loginUser(email, password);
+    if (res.success) {
+      navigate('/', { replace: true });
     } else {
-      navigate('/home', { replace: true });
+      setError(res.message || 'Login failed');
     }
   };
 
@@ -37,9 +27,7 @@ function LoginPage() {
       <h1 style={styles.heading}>Login</h1>
       {error && <div style={styles.error}>{error}</div>}
       <form onSubmit={handleLogin} style={styles.form} noValidate>
-        <label htmlFor="email" style={styles.label}>
-          Email
-        </label>
+        <label htmlFor="email" style={styles.label}>Email</label>
         <input
           type="email"
           id="email"
@@ -49,9 +37,7 @@ function LoginPage() {
           style={styles.input}
           autoComplete="username"
         />
-        <label htmlFor="password" style={styles.label}>
-          Password
-        </label>
+        <label htmlFor="password" style={styles.label}>Password</label>
         <input
           type="password"
           id="password"
@@ -61,9 +47,7 @@ function LoginPage() {
           style={styles.input}
           autoComplete="current-password"
         />
-        <button type="submit" style={styles.button} aria-label="Log in">
-          Login
-        </button>
+        <button type="submit" style={styles.button} aria-label="Log in">Login</button>
       </form>
     </div>
   );
